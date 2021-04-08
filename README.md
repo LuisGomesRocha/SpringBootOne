@@ -65,6 +65,138 @@ public class Cadastro {
 	@Min(value = 18 , message = "Idade necessita ser maior ou igual a 18 anos")
 	private Integer idade;
  ```
+ 
+ - [x] Cadastrar novos(as) alunos(as)
+ 
+<p align="justify"> :robot: Inicialmente os dados serão injetados pelo método POST pelo Postman no endereço mapeado no CadastroController como "@RequestMapping(value = "/api/cadastro")", a requisição será recebida pelo controller pela função novoCadastro e atribuindo as características do objeto implementado pelo CadastroRequest (evitando que minha entidade descrita na classe Cadastro seja exposta). Ainda no CadastroController, teremos a injeção de dependencia CadastroRepository através da anotação @Autowired, passando para a função "cadastroService.cadastrar(cadastro)" que por sua vez vai utilizar o método "save" do cadastroRepository (que recebeu do JpaRepository os métodos HTTP), salvando os dados (uma vez validados), no banco de dados.:robot: </p>
 
 
+CadastroRequest
+```
+public class CadastroRequest {
+	
+	@NotBlank(message = "nome em branco!")
+	@Size(min = 3, max = 30, message = "Nome deve conter de 3 a 30 caracteres!")
+	private String nome;
+	@Size(min = 3, max = 30, message = "Email deve conter de 3 a 30 caracteres!")
+	@NotBlank(message = "email em branco!")
+	@Email(message = "email inválido")
+	private String email;
+	@NotNull(message = "Data em branco!")
+	@Min(value = 18 , message = "Idade necessita ser maior ou igual a 18 anos")
+	private Integer idade;
+	
+	public Cadastro toModel() {
+		return new Cadastro(this.nome, this.email, this.idade);
+	}
+```
+
+CadastroRepositori
+
+```
+@Repository
+public interface CadastroRepository extends JpaRepository<Cadastro, Long> {
+
+}
+```
+CadastroService
+```
+@Service
+public class CadastroService {
+
+	@Autowired
+	CadastroRepository cadastroRepository;
+
+	// Cadastrar
+
+	public Cadastro cadastrar(Cadastro cadastro) throws Exception {
+
+		return cadastroRepository.save(cadastro);
+	}
+ ```
+ 
+ CadastroController
+
+ ```
+@RestController
+@RequestMapping(value = "/api/cadastro")
+public class CadastroController {
+
+	@Autowired
+	CadastroService cadastroService;
+	
+
+	// Criar Cadastro
+	@PostMapping
+	public ResponseEntity<CadastroResponse> novoCadastro(@Validated  @RequestBody CadastroRequest cadastroRequest) throws Exception {
+
+		Cadastro cadastro = cadastroRequest.toModel();
+		cadastroService.cadastrar(cadastro);
+		CadastroResponse cadastroResponse = cadastro.toResponse();
+		
+		return ResponseEntity.status(HttpStatus.OK).body(cadastroResponse);
+		
+	}
+ ```
+ 
+ - [x] Retornar um status 200 para a aplicação cliente em caso de sucesso ou 400 em caso de falha de validação
+
+<p align="justify"> :robot: O retorno 200 será implementado no retorno do método "novoCadastro" implementado no CadastroController, e o retorno 400 em caso de falha foi implementado na classe ServiceExceptionHandler no método "validation".:robot: </p>
+
+ ```
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<StandardError> validation(MethodArgumentNotValidException e, HttpServletRequest request) {
+    	
+    	List <String> msgs = new ArrayList<>();
+    	
+    	for (FieldError x : e.getBindingResult().getFieldErrors()) {
+            msgs.add(x.getDefaultMessage());            
+    		
+        }
+    	
+        StandardError err = new StandardError(HttpStatus.BAD_REQUEST.value(), msgs, System.currentTimeMillis());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
+    }
+ ```
+ E
+ 
+  ```     
+    	// Criar Cadastro
+	@PostMapping
+	public ResponseEntity<CadastroResponse> novoCadastro(@Validated  @RequestBody CadastroRequest cadastroRequest) throws Exception {
+
+		Cadastro cadastro = cadastroRequest.toModel();
+		cadastroService.cadastrar(cadastro);
+		CadastroResponse cadastroResponse = cadastro.toResponse();
+		
+		return ResponseEntity.status(HttpStatus.OK).body(cadastroResponse);
+		
+	}
+  ``` 
   
+- [x] Detalhes de cada aluno(a) possam ser acessados
+- [x] Identificação do(a) aluno(a) será feita pelo id do banco de dados e deve fazer parte do endereço de acesso
+
+<p align="justify"> :robot: Para que os detalhes de cada aluno(a) possam foi implementado a função "buscar", fazendo a pesquisa no banco de dados através do "id" do aluno.:robot: </p>
+
+  ``` 
+	// Buscar Cadastro
+	@GetMapping("/{id}")
+
+	public ResponseEntity<CadastroResponse> buscar(@PathVariable Long id) {
+
+		return ResponseEntity.status(HttpStatus.OK).body(cadastroService.buscar(id).toResponse());
+
+	}
+  ``` 
+  
+  - [x] Para o detalhe, só precisamos exibir o nome e o email
+  
+  <p align="justify"> :robot: Uma vez feito o salvamento dos alunos será retornado para o usuário apenas email e nome, implementados pela classe CadastroResponse :robot: </p>
+ 
+   ``` 
+ public CadastroResponse toResponse() {
+		return new CadastroResponse(this.email, this.nome);
+	}
+	
+  ``` 
